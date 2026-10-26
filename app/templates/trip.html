@@ -1,0 +1,573 @@
+{% extends "base.html" %}
+
+{% block title %}{{ trip.name }} - Trip Budget Manager{% endblock %}
+
+{% block content %}
+<div class="flex-1 flex flex-col max-w-2xl mx-auto w-full px-3 sm:px-6 py-4">
+
+    <!-- Top Sticky Header -->
+    <header class="sticky top-2 z-30 glass-panel rounded-2xl p-3.5 sm:p-4 mb-4 shadow-xl flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+            <a href="/" class="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-all shrink-0">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            </a>
+            <div class="min-w-0">
+                <h1 class="text-base sm:text-lg font-bold text-white truncate" id="header-trip-name">{{ trip.name }}</h1>
+                <div class="flex items-center gap-2 text-xs text-slate-400">
+                    <span class="font-mono bg-slate-800 px-1.5 py-0.5 rounded text-[11px] text-blue-400">#{{ trip.id }}</span>
+                    <span>•</span>
+                    <span id="header-members-count">... members</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <!-- Share / QR Button -->
+            <button 
+                onclick="openShareModal()" 
+                title="Share Trip"
+                class="p-2.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 font-semibold text-xs transition-all flex items-center gap-1.5 active:scale-95"
+            >
+                <i data-lucide="share-2" class="w-4 h-4"></i>
+                <span class="hidden sm:inline">Share</span>
+            </button>
+
+            <!-- Add Member Button -->
+            <button 
+                onclick="openAddMemberModal()" 
+                title="Add Member"
+                class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs transition-all flex items-center gap-1.5 active:scale-95"
+            >
+                <i data-lucide="user-plus" class="w-4 h-4"></i>
+            </button>
+
+            <!-- Export Dropdown / Button -->
+            <div class="relative">
+                <button 
+                    onclick="toggleExportMenu()" 
+                    id="export-menu-btn"
+                    title="Export Options"
+                    class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all active:scale-95"
+                >
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                </button>
+                <div id="export-dropdown" class="absolute right-0 mt-2 w-48 rounded-2xl glass-panel shadow-2xl py-2 hidden z-40 border border-slate-700 animate-fadeIn">
+                    <button onclick="shareViaWhatsApp()" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-blue-600/20 flex items-center gap-2.5">
+                        <i data-lucide="message-circle" class="w-4 h-4 text-emerald-400"></i>
+                        <span>WhatsApp Summary</span>
+                    </button>
+                    <a href="/api/trips/{{ trip.id }}/export/csv" download class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-blue-600/20 flex items-center gap-2.5">
+                        <i data-lucide="file-spreadsheet" class="w-4 h-4 text-cyan-400"></i>
+                        <span>Download CSV</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Trip Total Spending Card -->
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-900/40 via-slate-900 to-slate-900 border border-blue-500/20 p-5 sm:p-6 mb-4 shadow-xl">
+        <div class="absolute -top-12 -right-12 w-40 h-40 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Total Trip Spending</p>
+                <div class="flex items-baseline gap-1">
+                    <span class="text-2xl sm:text-3xl font-extrabold text-white" id="stat-total-spent">...</span>
+                </div>
+            </div>
+            <div class="text-right">
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Avg / Member</p>
+                <div class="text-lg sm:text-xl font-bold text-blue-400" id="stat-avg-spent">...</div>
+            </div>
+        </div>
+        
+        <!-- Members Avatar Bubbles Stack -->
+        <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between">
+            <div id="members-avatar-stack" class="flex -space-x-2 overflow-hidden py-1">
+                <!-- Rendered by JS -->
+            </div>
+            <div id="stat-expense-count" class="text-xs text-slate-400 font-medium">
+                0 expenses
+            </div>
+        </div>
+    </div>
+
+    <!-- Desktop Navigation Tabs (Hidden on mobile) -->
+    <div class="hidden md:flex items-center gap-1.5 p-1 bg-slate-900 border border-slate-800 rounded-2xl mb-4 text-sm font-semibold">
+        <button onclick="switchTab('expenses')" id="d-tab-expenses" class="flex-1 py-2.5 px-4 rounded-xl text-center transition-all text-blue-400 bg-blue-600/10 border border-blue-500/20 flex items-center justify-center gap-2">
+            <i data-lucide="receipt" class="w-4 h-4"></i>
+            <span>Expenses</span>
+        </button>
+        <button onclick="switchTab('add')" id="d-tab-add" class="flex-1 py-2.5 px-4 rounded-xl text-center transition-all text-slate-400 hover:text-white flex items-center justify-center gap-2">
+            <i data-lucide="plus-circle" class="w-4 h-4"></i>
+            <span>Add Expense</span>
+        </button>
+        <button onclick="switchTab('balances')" id="d-tab-balances" class="flex-1 py-2.5 px-4 rounded-xl text-center transition-all text-slate-400 hover:text-white flex items-center justify-center gap-2">
+            <i data-lucide="scale" class="w-4 h-4"></i>
+            <span>Balances</span>
+        </button>
+        <button onclick="switchTab('settle')" id="d-tab-settle" class="flex-1 py-2.5 px-4 rounded-xl text-center transition-all text-slate-400 hover:text-white flex items-center justify-center gap-2 relative">
+            <i data-lucide="handshake" class="w-4 h-4"></i>
+            <span>Settle Up</span>
+            <span id="desktop-settle-badge" class="hidden w-2 h-2 rounded-full bg-rose-500"></span>
+        </button>
+        <button onclick="switchTab('stats')" id="d-tab-stats" class="flex-1 py-2.5 px-4 rounded-xl text-center transition-all text-slate-400 hover:text-white flex items-center justify-center gap-2">
+            <i data-lucide="pie-chart" class="w-4 h-4"></i>
+            <span>Stats</span>
+        </button>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- TAB 1: EXPENSES LIST VIEW                     -->
+    <!-- ============================================== -->
+    <div id="view-expenses" class="tab-view space-y-3">
+        <!-- Category Filter Pills -->
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs font-semibold">
+            <button onclick="filterExpenses('all')" data-cat="all" class="cat-filter-btn px-3 py-1.5 rounded-xl bg-blue-600 text-white shrink-0 transition-all">All</button>
+            <button onclick="filterExpenses('Food')" data-cat="Food" class="cat-filter-btn px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white shrink-0 transition-all">🍔 Food</button>
+            <button onclick="filterExpenses('Travel')" data-cat="Travel" class="cat-filter-btn px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white shrink-0 transition-all">🚗 Travel</button>
+            <button onclick="filterExpenses('Stay')" data-cat="Stay" class="cat-filter-btn px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white shrink-0 transition-all">🏨 Stay</button>
+            <button onclick="filterExpenses('Activities')" data-cat="Activities" class="cat-filter-btn px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white shrink-0 transition-all">🎟️ Fun</button>
+            <button onclick="filterExpenses('Shopping')" data-cat="Shopping" class="cat-filter-btn px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white shrink-0 transition-all">🛍️ Shop</button>
+            <button onclick="filterExpenses('Other')" data-cat="Other" class="cat-filter-btn px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white shrink-0 transition-all">📦 Other</button>
+        </div>
+
+        <!-- Expenses List Container -->
+        <div id="expenses-list" class="space-y-2.5">
+            <!-- Dynamic Items or Empty State -->
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- TAB 2: ADD EXPENSE FORM VIEW                  -->
+    <!-- ============================================== -->
+    <div id="view-add" class="tab-view hidden">
+        <div class="glass-panel rounded-3xl p-5 sm:p-7 shadow-2xl">
+            <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <i data-lucide="plus-circle" class="w-5 h-5 text-blue-400"></i>
+                <span>Add an Expense</span>
+            </h2>
+
+            <form id="add-expense-form" onsubmit="handleSaveExpense(event)" class="space-y-5">
+                <!-- Amount Input -->
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                        Amount *
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-xl font-bold text-blue-400" id="form-currency-symbol">
+                            {{ trip.currency }}
+                        </span>
+                        <input 
+                            type="number" 
+                            id="expense-amount" 
+                            step="0.01" 
+                            min="0.01" 
+                            required 
+                            placeholder="0.00" 
+                            class="w-full pl-12 pr-4 py-3.5 bg-slate-900 border border-slate-700 rounded-2xl text-white text-xl font-bold placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                        >
+                    </div>
+                </div>
+
+                <!-- Description / Title -->
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                        Description *
+                    </label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                            <i data-lucide="tag" class="w-4 h-4"></i>
+                        </div>
+                        <input 
+                            type="text" 
+                            id="expense-title" 
+                            required 
+                            placeholder="e.g. Seafood Dinner, Uber to Airport, Airbnb" 
+                            class="w-full pl-10 pr-4 py-3 bg-slate-900 border border-slate-700 rounded-2xl text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                        >
+                    </div>
+                </div>
+
+                <!-- Category Selector -->
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                        Category
+                    </label>
+                    <div class="grid grid-cols-3 sm:grid-cols-6 gap-2" id="category-selector">
+                        <label class="category-pill flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-900 border border-slate-700 cursor-pointer hover:border-slate-600 text-xs font-semibold has-[:checked]:border-orange-500 has-[:checked]:bg-orange-500/10 has-[:checked]:text-orange-400">
+                            <input type="radio" name="expense-category" value="Food" checked class="hidden">
+                            <span class="text-lg mb-1">🍔</span>
+                            <span>Food</span>
+                        </label>
+                        <label class="category-pill flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-900 border border-slate-700 cursor-pointer hover:border-slate-600 text-xs font-semibold has-[:checked]:border-blue-500 has-[:checked]:bg-blue-500/10 has-[:checked]:text-blue-400">
+                            <input type="radio" name="expense-category" value="Travel" class="hidden">
+                            <span class="text-lg mb-1">🚗</span>
+                            <span>Travel</span>
+                        </label>
+                        <label class="category-pill flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-900 border border-slate-700 cursor-pointer hover:border-slate-600 text-xs font-semibold has-[:checked]:border-purple-500 has-[:checked]:bg-purple-500/10 has-[:checked]:text-purple-400">
+                            <input type="radio" name="expense-category" value="Stay" class="hidden">
+                            <span class="text-lg mb-1">🏨</span>
+                            <span>Stay</span>
+                        </label>
+                        <label class="category-pill flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-900 border border-slate-700 cursor-pointer hover:border-slate-600 text-xs font-semibold has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-500/10 has-[:checked]:text-emerald-400">
+                            <input type="radio" name="expense-category" value="Activities" class="hidden">
+                            <span class="text-lg mb-1">🎟️</span>
+                            <span>Fun</span>
+                        </label>
+                        <label class="category-pill flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-900 border border-slate-700 cursor-pointer hover:border-slate-600 text-xs font-semibold has-[:checked]:border-pink-500 has-[:checked]:bg-pink-500/10 has-[:checked]:text-pink-400">
+                            <input type="radio" name="expense-category" value="Shopping" class="hidden">
+                            <span class="text-lg mb-1">🛍️</span>
+                            <span>Shopping</span>
+                        </label>
+                        <label class="category-pill flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-900 border border-slate-700 cursor-pointer hover:border-slate-600 text-xs font-semibold has-[:checked]:border-slate-400 has-[:checked]:bg-slate-400/10 has-[:checked]:text-slate-200">
+                            <input type="radio" name="expense-category" value="Other" class="hidden">
+                            <span class="text-lg mb-1">📦</span>
+                            <span>Other</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Paid By Member Selector -->
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                        Paid by *
+                    </label>
+                    <div id="form-paid-by-chips" class="flex flex-wrap gap-2">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Date -->
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                        Date
+                    </label>
+                    <input 
+                        type="date" 
+                        id="expense-date" 
+                        class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-2xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                </div>
+
+                <!-- Split Options (Equal vs Custom) -->
+                <div class="border-t border-slate-800 pt-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <label class="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                            Split Between
+                        </label>
+                        <div class="flex gap-1 text-xs">
+                            <button type="button" onclick="setSplitMode('equal_all')" id="btn-split-all" class="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-semibold">All</button>
+                            <button type="button" onclick="setSplitMode('equal_custom')" id="btn-split-select" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400 hover:text-white font-semibold">Select</button>
+                            <button type="button" onclick="setSplitMode('exact')" id="btn-split-exact" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400 hover:text-white font-semibold">Exact ₹</button>
+                        </div>
+                    </div>
+
+                    <!-- Split Mode 1: Equal with All (Default) -->
+                    <div id="split-mode-all" class="p-3 bg-slate-900/60 rounded-2xl border border-slate-800 text-xs text-slate-400 flex items-center gap-2">
+                        <i data-lucide="check-check" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+                        <span>Split equally among all members of this trip.</span>
+                    </div>
+
+                    <!-- Split Mode 2: Equal with Selected -->
+                    <div id="split-mode-select" class="hidden space-y-2 p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
+                        <p class="text-xs text-slate-400 mb-2">Check who is involved in this expense:</p>
+                        <div id="split-checkboxes-container" class="space-y-1.5">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Split Mode 3: Custom Exact Amounts -->
+                    <div id="split-mode-exact" class="hidden space-y-2.5 p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
+                        <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+                            <span>Enter exact share for each person:</span>
+                            <span id="exact-sum-indicator" class="font-bold text-amber-400">Remaining: ₹0.00</span>
+                        </div>
+                        <div id="exact-inputs-container" class="space-y-2">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button 
+                    type="submit" 
+                    id="save-expense-btn"
+                    class="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold text-base shadow-lg shadow-blue-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                >
+                    <i data-lucide="check" class="w-5 h-5"></i>
+                    <span>Save Expense</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- TAB 3: BALANCES VIEW                          -->
+    <!-- ============================================== -->
+    <div id="view-balances" class="tab-view hidden space-y-3">
+        <div class="flex items-center justify-between mb-1">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-400">Group Balances</h2>
+            <span class="text-xs text-slate-500">Live updated</span>
+        </div>
+        
+        <div id="balances-container" class="space-y-2.5">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- TAB 4: SETTLE UP VIEW                         -->
+    <!-- ============================================== -->
+    <div id="view-settle" class="tab-view hidden space-y-4">
+        <!-- Highlights Box -->
+        <div class="glass-panel rounded-3xl p-5 border-blue-500/20 shadow-xl">
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                    <div class="p-2 rounded-xl bg-cyan-500/20 text-cyan-400">
+                        <i data-lucide="wand-2" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold text-white">Smart Debt Settlement</h2>
+                        <p class="text-xs text-slate-400">Minimizes payments between friends</p>
+                    </div>
+                </div>
+                <button onclick="shareViaWhatsApp()" class="px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-all">
+                    <i data-lucide="share" class="w-3.5 h-3.5"></i>
+                    <span>WhatsApp</span>
+                </button>
+            </div>
+
+            <!-- Settlement Steps List -->
+            <div id="settlement-steps-list" class="space-y-2.5 mt-4">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
+        <!-- Recorded Settlements History -->
+        <div id="settlements-history-section" class="glass-panel rounded-3xl p-5 shadow-xl hidden">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+                <i data-lucide="history" class="w-4 h-4 text-slate-500"></i>
+                <span>Recorded Payments History</span>
+            </h3>
+            <div id="settlements-history-list" class="space-y-2 text-xs">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- TAB 5: ANALYTICS / STATS VIEW                 -->
+    <!-- ============================================== -->
+    <div id="view-stats" class="tab-view hidden space-y-4">
+        <!-- Category Breakdown Chart Card -->
+        <div class="glass-panel rounded-3xl p-5 shadow-xl">
+            <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                <i data-lucide="pie-chart" class="w-4 h-4 text-cyan-400"></i>
+                <span>Spending by Category</span>
+            </h3>
+            <div class="w-full max-w-[280px] mx-auto relative aspect-square">
+                <canvas id="category-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Payer Breakdown Chart Card -->
+        <div class="glass-panel rounded-3xl p-5 shadow-xl">
+            <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                <i data-lucide="bar-chart-3" class="w-4 h-4 text-blue-400"></i>
+                <span>Spending by Payer</span>
+            </h3>
+            <div class="w-full relative min-h-[220px]">
+                <canvas id="payer-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ============================================== -->
+<!-- MOBILE BOTTOM NAVIGATION BAR                  -->
+<!-- ============================================== -->
+<nav class="md:hidden fixed bottom-0 left-0 right-0 glass-nav z-40 px-3 py-2 flex items-center justify-around">
+    <!-- Expenses Tab -->
+    <button onclick="switchTab('expenses')" id="m-tab-expenses" class="nav-tab active flex flex-col items-center gap-1 text-slate-400 py-1 transition-all">
+        <div class="nav-icon-wrapper p-1.5 rounded-xl transition-all">
+            <i data-lucide="receipt" class="w-5 h-5"></i>
+        </div>
+        <span class="text-[11px] font-semibold">Expenses</span>
+    </button>
+
+    <!-- Balances Tab -->
+    <button onclick="switchTab('balances')" id="m-tab-balances" class="nav-tab flex flex-col items-center gap-1 text-slate-400 py-1 transition-all">
+        <div class="nav-icon-wrapper p-1.5 rounded-xl transition-all">
+            <i data-lucide="scale" class="w-5 h-5"></i>
+        </div>
+        <span class="text-[11px] font-semibold">Balances</span>
+    </button>
+
+    <!-- Floating Add Button (Center) -->
+    <button onclick="switchTab('add')" id="m-tab-add" class="flex flex-col items-center -mt-6 active:scale-95 transition-all">
+        <div class="w-13 h-13 p-3 rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-500 text-white shadow-xl shadow-blue-500/40 ring-4 ring-slate-950 flex items-center justify-center">
+            <i data-lucide="plus" class="w-6 h-6 stroke-[2.5]"></i>
+        </div>
+        <span class="text-[11px] font-bold text-white mt-1">Add</span>
+    </button>
+
+    <!-- Settle Up Tab -->
+    <button onclick="switchTab('settle')" id="m-tab-settle" class="nav-tab flex flex-col items-center gap-1 text-slate-400 py-1 transition-all relative">
+        <div class="nav-icon-wrapper p-1.5 rounded-xl transition-all relative">
+            <i data-lucide="handshake" class="w-5 h-5"></i>
+            <span id="mobile-settle-dot" class="hidden absolute top-1 right-1 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-slate-900"></span>
+        </div>
+        <span class="text-[11px] font-semibold">Settle</span>
+    </button>
+
+    <!-- Stats Tab -->
+    <button onclick="switchTab('stats')" id="m-tab-stats" class="nav-tab flex flex-col items-center gap-1 text-slate-400 py-1 transition-all">
+        <div class="nav-icon-wrapper p-1.5 rounded-xl transition-all">
+            <i data-lucide="pie-chart" class="w-5 h-5"></i>
+        </div>
+        <span class="text-[11px] font-semibold">Stats</span>
+    </button>
+</nav>
+
+<!-- ============================================== -->
+<!-- MODAL: SHARE & QR CODE                        -->
+<!-- ============================================== -->
+<div id="share-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-panel w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-slate-700 animate-scaleUp">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+                <i data-lucide="qr-code" class="w-5 h-5 text-cyan-400"></i>
+                <span>Invite Friends to Trip</span>
+            </h3>
+            <button onclick="closeModal('share-modal')" class="p-1 text-slate-400 hover:text-white rounded-lg">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <!-- QR Code Container -->
+        <div class="p-4 bg-white rounded-2xl flex items-center justify-center mb-4 shadow-inner" id="qrcode-wrapper">
+            <!-- QR code rendered by qrcode.js -->
+        </div>
+
+        <p class="text-xs text-center text-slate-400 mb-4">
+            Friends can scan this QR code with their mobile camera to open and update expenses directly.
+        </p>
+
+        <!-- Share Actions -->
+        <div class="space-y-2">
+            <button onclick="copyTripLink()" class="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all">
+                <i data-lucide="copy" class="w-4 h-4"></i>
+                <span>Copy Trip Link</span>
+            </button>
+            <button onclick="triggerNativeShare()" class="w-full py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs flex items-center justify-center gap-2 transition-all">
+                <i data-lucide="share-2" class="w-4 h-4"></i>
+                <span>Share via Phone / WhatsApp</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================== -->
+<!-- MODAL: ADD MEMBER                             -->
+<!-- ============================================== -->
+<div id="add-member-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-panel w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-slate-700 animate-scaleUp">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+                <i data-lucide="user-plus" class="w-5 h-5 text-blue-400"></i>
+                <span>Add Member to Trip</span>
+            </h3>
+            <button onclick="closeModal('add-member-modal')" class="p-1 text-slate-400 hover:text-white rounded-lg">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <form onsubmit="handleSaveNewMember(event)" class="space-y-4">
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Member Name</label>
+                <input 
+                    type="text" 
+                    id="new-member-name" 
+                    required 
+                    placeholder="e.g. Vikram" 
+                    class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-2xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+            </div>
+            <button type="submit" class="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all">
+                <i data-lucide="check" class="w-4 h-4"></i>
+                <span>Add to Trip</span>
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- ============================================== -->
+<!-- MODAL: RECORD SETTLEMENT                      -->
+<!-- ============================================== -->
+<div id="settlement-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-panel w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-slate-700 animate-scaleUp">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+                <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-400"></i>
+                <span>Record Settlement</span>
+            </h3>
+            <button onclick="closeModal('settlement-modal')" class="p-1 text-slate-400 hover:text-white rounded-lg">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <form onsubmit="handleConfirmSettlement(event)" class="space-y-4">
+            <input type="hidden" id="settle-from-id">
+            <input type="hidden" id="settle-to-id">
+
+            <div class="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 text-sm space-y-1">
+                <div class="text-xs text-slate-400">Settling Payment:</div>
+                <div class="font-bold text-white flex items-center gap-2">
+                    <span id="settle-from-name" class="text-blue-400">...</span>
+                    <i data-lucide="arrow-right" class="w-4 h-4 text-slate-500"></i>
+                    <span id="settle-to-name" class="text-emerald-400">...</span>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Amount</label>
+                <input 
+                    type="number" 
+                    id="settle-amount" 
+                    step="0.01" 
+                    required 
+                    class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-2xl text-white font-bold text-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Note (Optional)</label>
+                <input 
+                    type="text" 
+                    id="settle-notes" 
+                    placeholder="e.g. GPay / Cash / UPI" 
+                    class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-2xl text-white text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+            </div>
+
+            <button type="submit" class="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all">
+                <i data-lucide="check" class="w-4 h-4"></i>
+                <span>Mark as Paid & Update Balances</span>
+            </button>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Embedded Trip ID from FastAPI
+    const TRIP_ID = "{{ trip.id }}";
+    const TRIP_CURRENCY = "{{ trip.currency }}";
+</script>
+<script src="/static/js/app.js"></script>
+{% endblock %}

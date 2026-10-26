@@ -1,0 +1,80 @@
+/* Trip Budget Manager Custom Styles */
+
+/* Safe area padding for mobile notch / gesture bar */
+:root {
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+}
+
+body {
+    padding-bottom: calc(4.5rem + var(--sab));
+}
+
+@media (min-width: 768px) {
+    body {
+        padding-bottom: 2rem;
+    }
+}
+
+/* Custom modern scrollbars */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+}
+
+/* Glassmorphism helpers */
+.glass-panel {
+    background: rgba(30, 41, 59, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-nav {
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Bottom Nav bar active tab indicator */
+.nav-tab.active {
+    color: #38bdf8;
+}
+
+.nav-tab.active .nav-icon-wrapper {
+    background-color: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    transform: translateY(-2px);
+}
+
+/* Mobile tap feel */
+button, a, input, select {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Custom toggle buttons */
+input[type="checkbox"]:checked + label {
+    border-color: #3b82f6;
+    background-color: rgba(59, 130, 246, 0.15);
+}
+
+/* Shimmer animation */
+@keyframes pulseSlow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.animate-pulse-slow {
+    animation: pulseSlow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+
+{% block title %}Trip Budget Manager - Settle Group Expenses Easily{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto px-4 py-8 flex flex-col items-center">
+
+    <!-- Brand Header -->
+    <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-gradient-to-tr from-blue-600 to-cyan-500 shadow-xl shadow-blue-500/20 mb-4 ring-4 ring-blue-500/20">
+            <i data-lucide="plane-takeoff" class="w-8 h-8 text-white"></i>
+        </div>
+        <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-2">
+            Trip Budget Manager
+        </h1>
+        <p class="text-slate-400 text-sm sm:text-base max-w-sm mx-auto">
+            Add group expenses on the go, track balances, and settle dues with one tap.
+        </p>
+    </div>
+
+    {% if error %}
+    <div class="w-full mb-6 p-4 rounded-2xl bg-rose-950/60 border border-rose-800 text-rose-200 text-sm flex items-center gap-3">
+        <i data-lucide="alert-circle" class="w-5 h-5 text-rose-400 shrink-0"></i>
+        <span>{{ error }}</span>
+    </div>
+    {% endif %}
+
+    <!-- Create Trip Card -->
+    <div class="w-full glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl mb-8">
+        <div class="flex items-center gap-2 mb-6">
+            <div class="p-2 rounded-xl bg-blue-500/20 text-blue-400">
+                <i data-lucide="sparkles" class="w-5 h-5"></i>
+            </div>
+            <h2 class="text-xl font-bold text-white">Create a New Trip</h2>
+        </div>
+
+        <form id="create-trip-form" onsubmit="handleCreateTrip(event)" class="space-y-5">
+            <!-- Trip Name -->
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                    Trip Name *
+                </label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <i data-lucide="map-pin" class="w-4 h-4"></i>
+                    </div>
+                    <input 
+                        type="text" 
+                        id="trip-name" 
+                        required 
+                        placeholder="e.g. Goa Vacation 2026, Trek to Manali"
+                        class="w-full pl-10 pr-4 py-3 bg-slate-900/90 border border-slate-700 rounded-2xl text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    >
+                </div>
+            </div>
+
+            <!-- Currency Selection -->
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                    Currency
+                </label>
+                <div class="grid grid-cols-4 gap-2">
+                    <label class="relative flex items-center justify-center p-3 rounded-2xl bg-slate-900 border border-slate-700 cursor-pointer hover:border-slate-600 transition-all text-sm font-semibold has-[:checked]:border-blue-500 has-[:checked]:bg-blue-500/10 has-[:checked]:text-blue-400">
+                        <input type="radio" name="currency" value="₹" checked class="hidden">
+                        <span>₹ INR</span>
+                    </label>
+                    <label class="relative flex items-center justify-center p-3 rounded-2xl bg-slate-900 border border-slate-700 cursor-pointer hover:border-slate-600 transition-all text-sm font-semibold has-[:checked]:border-blue-500 has-[:checked]:bg-blue-500/10 has-[:checked]:text-blue-400">
+                        <input type="radio" name="currency" value="$" class="hidden">
+                        <span>$ USD</span>
+                    </label>
+                    <label class="relative flex items-center justify-center p-3 rounded-2xl bg-slate-900 border border-slate-700 cursor-pointer hover:border-slate-600 transition-all text-sm font-semibold has-[:checked]:border-blue-500 has-[:checked]:bg-blue-500/10 has-[:checked]:text-blue-400">
+                        <input type="radio" name="currency" value="€" class="hidden">
+                        <span>€ EUR</span>
+                    </label>
+                    <label class="relative flex items-center justify-center p-3 rounded-2xl bg-slate-900 border border-slate-700 cursor-pointer hover:border-slate-600 transition-all text-sm font-semibold has-[:checked]:border-blue-500 has-[:checked]:bg-blue-500/10 has-[:checked]:text-blue-400">
+                        <input type="radio" name="currency" value="£" class="hidden">
+                        <span>£ GBP</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Members Management -->
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <label class="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        Trip Members * (Min 2)
+                    </label>
+                    <span id="member-counter" class="text-xs text-blue-400 font-medium">3 added</span>
+                </div>
+                
+                <!-- Member Tags List -->
+                <div id="members-chip-container" class="flex flex-wrap gap-2 p-3 bg-slate-900/80 border border-slate-700 rounded-2xl min-h-[52px] mb-2.5">
+                    <!-- Default Initial Members -->
+                </div>
+
+                <!-- Input to add members -->
+                <div class="flex gap-2">
+                    <div class="relative flex-1">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                            <i data-lucide="user-plus" class="w-4 h-4"></i>
+                        </div>
+                        <input 
+                            type="text" 
+                            id="member-input" 
+                            placeholder="Type name (e.g. Rahul) & press Enter"
+                            onkeydown="handleMemberKeyDown(event)"
+                            class="w-full pl-9 pr-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                        >
+                    </div>
+                    <button 
+                        type="button" 
+                        onclick="addMemberFromInput()" 
+                        class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded-xl text-sm font-semibold transition-all flex items-center gap-1 active:scale-95"
+                    >
+                        <span>Add</span>
+                    </button>
+                </div>
+                <p class="text-xs text-slate-500 mt-1.5">You can also add more members later anytime during the trip.</p>
+            </div>
+
+            <!-- Submit Button -->
+            <button 
+                type="submit" 
+                id="create-btn"
+                class="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold text-base shadow-lg shadow-blue-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            >
+                <i data-lucide="arrow-right-circle" class="w-5 h-5"></i>
+                <span>Create Trip & Open Dashboard</span>
+            </button>
+        </form>
+    </div>
+
+    <!-- Join Trip With Code Card -->
+    <div class="w-full glass-panel rounded-3xl p-6 shadow-xl mb-8">
+        <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <i data-lucide="key" class="w-4 h-4 text-cyan-400"></i>
+            <span>Already have a trip code or link?</span>
+        </h3>
+        <div class="flex gap-2">
+            <input 
+                type="text" 
+                id="join-code-input"
+                placeholder="Enter 8-letter code (e.g. 7f8a92b1)" 
+                class="flex-1 px-4 py-3 bg-slate-900/90 border border-slate-700 rounded-2xl text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 uppercase tracking-widest font-mono"
+            >
+            <button 
+                type="button" 
+                onclick="handleJoinTrip()" 
+                class="px-5 py-3 bg-cyan-600 hover:bg-cyan-500 active:scale-95 text-white text-sm font-bold rounded-2xl transition-all shadow-lg shadow-cyan-600/20"
+            >
+                Open
+            </button>
+        </div>
+    </div>
+
+    <!-- Recent Trips from LocalStorage -->
+    <div id="recent-trips-section" class="w-full hidden">
+        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <i data-lucide="history" class="w-4 h-4 text-blue-400"></i>
+            <span>Recent Trips on this Device</span>
+        </h3>
+        <div id="recent-trips-list" class="space-y-2.5">
+            <!-- Rendered by JS -->
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initial member state
+    let members = ["You", "Friend 1", "Friend 2"];
+
+    function renderMembers() {
+        const container = document.getElementById('members-chip-container');
+        const counter = document.getElementById('member-counter');
+        container.innerHTML = '';
+        
+        counter.textContent = `${members.length} added`;
+
+        members.forEach((name, index) => {
+            const chip = document.createElement('div');
+            chip.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 text-slate-200 border border-slate-700 text-xs font-semibold animate-fadeIn';
+            chip.innerHTML = `
+                <span>${escapeHtml(name)}</span>
+                ${members.length > 1 ? `
+                    <button type="button" onclick="removeMember(${index})" class="text-slate-400 hover:text-rose-400 p-0.5 rounded transition-colors">
+                        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                    </button>
+                ` : ''}
+            `;
+            container.appendChild(chip);
+        });
+        lucide.createIcons();
+    }
+
+    function addMemberFromInput() {
+        const input = document.getElementById('member-input');
+        const name = input.value.trim();
+        if (!name) return;
+
+        if (members.some(m => m.toLowerCase() === name.toLowerCase())) {
+            showToast('Member already in the list!', 'error');
+            return;
+        }
+
+        members.push(name);
+        input.value = '';
+        renderMembers();
+        input.focus();
+    }
+
+    function handleMemberKeyDown(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addMemberFromInput();
+        }
+    }
+
+    function removeMember(index) {
+        if (members.length <= 1) {
+            showToast('Trip needs at least one member!', 'error');
+            return;
+        }
+        members.splice(index, 1);
+        renderMembers();
+    }
+
+    async function handleCreateTrip(e) {
+        e.preventDefault();
+        const tripName = document.getElementById('trip-name').value.trim();
+        const currency = document.querySelector('input[name="currency"]:checked')?.value || '₹';
+        const createBtn = document.getElementById('create-btn');
+
+        if (!tripName) {
+            showToast('Please enter a trip name', 'error');
+            return;
+        }
+
+        if (members.length < 2) {
+            showToast('Please add at least 2 members to split expenses with', 'error');
+            return;
+        }
+
+        createBtn.disabled = true;
+        createBtn.innerHTML = `
+            <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>Creating your Trip...</span>
+        `;
+
+        try {
+            const res = await fetch('/api/trips', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: tripName,
+                    currency: currency,
+                    members: members
+                })
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || 'Failed to create trip');
+            }
+
+            const data = await res.json();
+            
+            // Save to recent trips in localStorage
+            saveRecentTrip(data.id, data.name, data.currency);
+
+            // Redirect to trip dashboard
+            window.location.href = `/trip/${data.id}`;
+        } catch (error) {
+            showToast(error.message, 'error');
+            createBtn.disabled = false;
+            createBtn.innerHTML = `
+                <i data-lucide="arrow-right-circle" class="w-5 h-5"></i>
+                <span>Create Trip & Open Dashboard</span>
+            `;
+            lucide.createIcons();
+        }
+    }
+
+    function handleJoinTrip() {
+        const input = document.getElementById('join-code-input');
+        let code = input.value.trim();
+        if (!code) {
+            showToast('Enter a trip code or paste link', 'error');
+            return;
+        }
+        
+        // If full URL was pasted, extract last path segment
+        if (code.includes('/trip/')) {
+            code = code.split('/trip/').pop().split('?')[0].split('/')[0];
+        }
+
+        window.location.href = `/trip/${code}`;
+    }
+
+    function saveRecentTrip(id, name, currency) {
+        try {
+            let recents = JSON.parse(localStorage.getItem('recent_trips') || '[]');
+            recents = recents.filter(t => t.id !== id);
+            recents.unshift({ id, name, currency, timestamp: Date.now() });
+            if (recents.length > 5) recents.pop();
+            localStorage.setItem('recent_trips', JSON.stringify(recents));
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function loadRecentTrips() {
+        try {
+            const recents = JSON.parse(localStorage.getItem('recent_trips') || '[]');
+            if (recents.length === 0) return;
+
+            const section = document.getElementById('recent-trips-section');
+            const list = document.getElementById('recent-trips-list');
+            list.innerHTML = '';
+
+            recents.forEach(trip => {
+                const item = document.createElement('a');
+                item.href = `/trip/${trip.id}`;
+                item.className = 'glass-panel p-4 rounded-2xl flex items-center justify-between hover:border-blue-500/50 transition-all group block';
+                item.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center font-bold">
+                            ${escapeHtml(trip.currency || '₹')}
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">${escapeHtml(trip.name)}</h4>
+                            <span class="text-xs text-slate-400 font-mono tracking-wider">Code: ${escapeHtml(trip.id)}</span>
+                        </div>
+                    </div>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500 group-hover:text-blue-400 transition-colors"></i>
+                `;
+                list.appendChild(item);
+            });
+
+            section.classList.remove('hidden');
+            lucide.createIcons();
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        renderMembers();
+        loadRecentTrips();
+    });
+</script>
+{% endblock %}
